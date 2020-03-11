@@ -28,20 +28,20 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/hello', methods=['POST', 'GET'])
-def handle_hello():
+# @app.route('/hello', methods=['POST', 'GET'])
+# def handle_hello():
 
-    response_body = {
-        "hello": "world"
-    }
+#     response_body = {
+#         "hello": "world"
+#     }
 
-    return jsonify(response_body), 200
+#     return jsonify(response_body), 200
 
 @app.route('/newuser', methods=['POST'])
 def handle_person():
     # First we get the payload json
     body = request.get_json()
-    user1 = Person(username=body['username'], email=body['email'])
+    user1 = Person(username=body['username'], email=body['email'], favoritecolor=body['tt'])
     db.session.add(user1)
     db.session.commit()
     return "ok", 200
@@ -49,14 +49,45 @@ def handle_person():
 
 @app.route('/user', methods=['GET'])
 def handle_users():
+
+    users = Person.query.all()
+    users = list(map(lambda x: x.serialize(), users))
+    if not users:  
+        return jsonify({'msg':'User not found'}), 404
+    return jsonify(users), 200
+    
+
+@app.route('/user/<int:person_id>', methods=['PUT', 'DELETE', 'GET'])
+def handle_update(person_id):
+   
+    body = request.get_json()
+    user1 = Person.query.get(person_id)
+    
     if request.method == 'GET':
-        users = Person.query.all()
-        if not users:
-            return jsonify({'msg':'User not found'}), 404
-        return jsonify( [x.serialize() for x in users] ), 200
-    return "Invalid Method", 404
+        return jsonify(user1.serialize()), 200
 
+  
+    if request.method == 'DELETE':
+        db.session.delete(user1)
+        db.session.commit()
+        return "ok", 200
 
+    if request.method == 'PUT':
+        user1 = Person.query.get(person_id)
+        user1.username = body.username
+        db.session.commit()
+        return jsonify(user1.serialize()), 200
+
+    if user1 is None:
+        raise APIException('User not found', status_code=404)
+    if "username" in body:
+        user1.username = body["username"]
+    if "email" in body:
+        user1.email = body["email"]
+    db.session.commit()
+   
+   
+    return "ok", 200
 
 
 
